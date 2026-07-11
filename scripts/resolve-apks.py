@@ -35,6 +35,24 @@ ROOT_SETS = {
     "WORKHORSE_RUNTIME_APKS": [
         "musl", "busybox", "exiftool",
     ],
+    # rails build userland: gcc/g++ toolchain (charlock_holmes/unf_ext are
+    # C++, rugged vendors libgit2 via cmake) + ruby's build deps + the -dev
+    # closures of every source-compiled native gem.
+    "RAILS_BUILD_APKS": [
+        "busybox", "busybox-binsh", "gcc", "g++", "make", "cmake", "musl-dev",
+        "linux-headers", "pkgconf", "zlib-dev", "openssl-dev", "yaml-dev",
+        "libffi-dev", "readline-dev", "gdbm-dev", "icu-dev", "file-dev",
+        "gpgme-dev", "libpq-dev", "krb5-dev", "tzdata", "patch",
+        # BASERUBY: extraction scrambles mtimes, so ruby's make regenerates
+        # pregenerated sources and needs a host ruby (build-only).
+        "ruby",
+    ],
+    # rails runtime: shared libs the compiled gems + ruby link against.
+    "RAILS_RUNTIME_APKS": [
+        "musl", "busybox", "zlib", "libssl3", "libcrypto3", "yaml", "libffi",
+        "readline", "gdbm", "icu-libs", "libmagic", "file", "libpq", "gpgme",
+        "libassuan", "libgpg-error", "krb5-libs", "tzdata", "ca-certificates-bundle",
+    ],
 }
 
 
