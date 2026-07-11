@@ -145,7 +145,7 @@ cd "$SRCTREE"
         script = head + "\n".join(copies) + tail,
         runtime_deps = [],
         resources = struct(cpu = "2000m", memory = "4Gi"),
-        # Persistent Go build cache shared by the four components (same
-        # toolchain; platform is auto-appended by the runner).
-        caches = {"/go-build-cache": "gitlab-build-go1.26.4"},
+        # Persistent per-component Go build cache (platform is auto-appended
+        # by the runner).
+        caches = {"/go-build-cache": "gitlab-build-" + component + "-go1.26.4"},
     )
