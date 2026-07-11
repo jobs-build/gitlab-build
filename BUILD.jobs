@@ -404,6 +404,7 @@ meson compile -C "$GITDIR/build" %s
 """ + "\n".join(stage) + """
 for a in $(/bin/busybox --list); do ln -sf /bin/busybox "/bin/$a" 2>/dev/null || true; done
 ln -sf /bin/busybox /usr/bin/env 2>/dev/null || true
+export PATH="/usr/bin:/bin:$PATH"
 export HOME=/build
 gcc --version | head -1
 meson --version
