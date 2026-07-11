@@ -42,7 +42,7 @@ ROOT_SETS = {
         "busybox", "busybox-binsh", "gcc", "g++", "make", "cmake", "musl-dev",
         "linux-headers", "pkgconf", "zlib-dev", "openssl-dev", "yaml-dev",
         "libffi-dev", "readline-dev", "gdbm-dev", "icu-dev", "file-dev",
-        "gpgme-dev", "libpq-dev", "krb5-dev", "tzdata", "patch",
+        "gpgme-dev", "libpq-dev", "krb5-dev", "tzdata", "patch", "musl-utils",
         # BASERUBY: extraction scrambles mtimes, so ruby's make regenerates
         # pregenerated sources and needs a host ruby (build-only).
         "ruby",
@@ -51,7 +51,7 @@ ROOT_SETS = {
     "RAILS_RUNTIME_APKS": [
         "musl", "busybox", "zlib", "libssl3", "libcrypto3", "yaml", "libffi",
         "readline", "gdbm", "icu-libs", "libmagic", "file", "libpq", "gpgme",
-        "libassuan", "libgpg-error", "krb5-libs", "tzdata", "ca-certificates-bundle",
+        "libassuan", "libgpg-error", "krb5-libs", "musl-utils", "tzdata", "ca-certificates-bundle",
     ],
 }
 
