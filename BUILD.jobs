@@ -1,0 +1,151 @@
+# BUILD.jobs — hermetic JOBS builds of the Cloud Native GitLab (CE) components.
+#
+# One component per invocation, selected by --param component=:
+#
+#   jobs remote-build --source-dir . --param component=shell      # gitlab-shell
+#   jobs remote-build --source-dir . --param component=pages      # gitlab-pages
+#   jobs remote-build --source-dir . --param component=kas        # gitlab-kas
+#   jobs remote-build --source-dir . --param component=registry   # container-registry
+#
+# Design: draganm/jobs docs/superpowers/specs/2026-07-11-gitlab-cng-build-design.md.
+# Satellite pins below are STATIC but SELF-CHECKING: at pin time the recipe
+# reads the master gitlab-foss tree's VERSION files (a resolution dep) and
+# fails loudly if a pin drifts from what the GitLab release declares. Bump
+# procedure: update GITLAB, run any satellite build, copy the expected
+# versions out of the assertion failures into SATELLITES.
+
+GITLAB = "v19.1.2"  # gitlab-org/gitlab-foss stable CE tag — the master pin
+
+# component -> (project, ref, VERSION file in the gitlab-foss tree)
+SATELLITES = {
+    "shell": ("gitlab-org/gitlab-shell", "v14.54.0", "GITLAB_SHELL_VERSION"),
+    "pages": ("gitlab-org/gitlab-pages", "v19.1.2", "GITLAB_PAGES_VERSION"),
+    "kas": ("gitlab-org/cluster-integration/gitlab-agent", "v19.1.2", "GITLAB_KAS_VERSION"),
+}
+
+# container-registry releases independently of GitLab — own pin, no assertion.
+REGISTRY = ("gitlab-org/container-registry", "v4.40.2-gitlab")
+
+# component -> (list of (binary, go package), smoke command, entrypoint binary)
+COMPONENTS = {
+    "shell": (
+        [
+            ("gitlab-shell", "./cmd/gitlab-shell"),
+            ("gitlab-sshd", "./cmd/gitlab-sshd"),
+            ("gitlab-shell-check", "./cmd/gitlab-shell-check"),
+            ("gitlab-shell-authorized-keys-check", "./cmd/gitlab-shell-authorized-keys-check"),
+            ("gitlab-shell-authorized-principals-check", "./cmd/gitlab-shell-authorized-principals-check"),
+        ],
+        '"$out/bin/gitlab-shell" -version',
+        "gitlab-sshd",
+    ),
+    "pages": ([("gitlab-pages", ".")], '"$out/bin/gitlab-pages" -version', "gitlab-pages"),
+    "kas": ([("kas", "./cmd/kas")], '"$out/bin/kas" --version', "kas"),
+    "registry": ([("registry", "./cmd/registry")], '"$out/bin/registry" help >/dev/null', "registry"),
+}
+
+GITLABFETCHER = fetcher(
+    name   = "gitlab",
+    url    = "https://github.com/jobs-build/fetcher-gitlab/archive/171f7077a98dd2f5947ba1be7db721ce05294316.tar.gz",
+    sha256 = "9906954a2721cb356bed07a4b71965f42ed194a34fdd19e615e686b35e21e663",
+)
+
+# Same plugin-go pin as the JOBS self-build root recipe; its artifact bundles
+# the matching fetcher-gomod pin, so module imports build their fetcher on
+# demand.
+GOPLUGIN = fetcher(
+    name   = "goplugin",
+    url    = "https://github.com/jobs-build/plugin-go/archive/609b0656b29417aadad3cfebefbd824aaf11f5fb.tar.gz",
+    sha256 = "dfd5dfe4171359cc0b30473ed023e28b198e3fdc659940a841629573a1f0a923",
+)
+
+GO_SHA = {
+    "amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
+    "arm64": "ef758ae7c6cf9267c9c0ef080b8965f453d89ab2d25d9eb22de4405925238768",
+}
+GOARCH = {"linux/amd64": "amd64", "linux/arm64": "arm64"}
+
+def src_import():
+    component = params["component"]
+    if component == "registry":
+        project, ref = REGISTRY
+    else:
+        project, ref, _ = SATELLITES[component]
+    return imp(fetcher = GITLABFETCHER, params = {"project": project, "ref": ref})
+
+def plugins():
+    component = params["component"]
+    if component not in COMPONENTS:
+        fail("unknown component %r (want one of %s)" % (component, ", ".join(sorted(COMPONENTS.keys()))))
+
+    # The component source is a resolution dep (its go.sum is read at pin
+    # time) AND a build input below — identical definition, one graph node.
+    deps = {"src": src_import()}
+    if component in SATELLITES:
+        deps["gitlab"] = imp(fetcher = GITLABFETCHER, params = {"project": "gitlab-org/gitlab-foss", "ref": GITLAB})
+    return struct(plugins = {"go": imp(fetcher = GOPLUGIN, params = {})}, deps = deps)
+
+def build():
+    component = params["component"]
+    bins, smoke, entry_bin = COMPONENTS[component]
+
+    # Self-checking satellite pin: the GitLab release declares each
+    # component's version; a drifted pin fails here with the expected value.
+    if component in SATELLITES:
+        project, ref, vfile = SATELLITES[component]
+        want = str(deps["gitlab"].read(vfile)).strip()
+        if ref[1:] != want:
+            fail("%s pin %s drifted: gitlab-foss %s declares %s = %s — update SATELLITES[%r]" %
+                 (component, ref, GITLAB, vfile, want, component))
+
+    goarch = GOARCH[platform]
+    toolchain = imp(fetcher = "tarball+https", params = {
+        "url": "https://go.dev/dl/go1.26.4.linux-" + goarch + ".tar.gz",
+        "sha256": GO_SHA[goarch],
+    })
+
+    # One gomod import per module in the component's go.sum (read from the
+    # resolution dep — the tree itself is only fetched once, shared with the
+    # build input below).
+    mods = plugins["go"](go_sum = deps["src"].read("go.sum"))
+
+    inputs = {"toolchain": toolchain, "src": src_import()}
+    copies = []
+    for m in mods:
+        name = "mod_" + m["path"].replace("/", "_").replace(".", "_").replace("-", "_")
+        inputs[name] = m["input"]
+        copies.append('cp -dr "$(jq -r .' + name + ' <<<"$JOBS_DEPS")/." "$GOMODCACHE/"')
+
+    build_lines = "\n".join(['go build -o "$out/bin/%s" %s' % (b, p) for b, p in bins])
+    entrypoint = '{"command": "bin/%s", "args": [], "env": {}}' % entry_bin
+
+    head = """
+set -e
+export GOROOT=/build/goroot
+mkdir -p "$GOROOT" "$out/bin"
+cp -dr "$(jq -r .toolchain <<<"$JOBS_DEPS")/go/." "$GOROOT/"
+export PATH="$GOROOT/bin:$PATH"
+export GOMODCACHE=/build/gomodcache GOCACHE=/go-build-cache GOPATH=/build/gopath
+export GOPROXY=off GOSUMDB=off GOFLAGS=-mod=mod GOTOOLCHAIN=local CGO_ENABLED=0
+mkdir -p "$GOMODCACHE/cache/download"
+"""
+    tail = """
+chmod -R u+w "$GOROOT" "$GOMODCACHE" 2>/dev/null || true
+SRCTREE=/build/src
+mkdir -p "$SRCTREE"
+cp -dr "$(jq -r .src <<<"$JOBS_DEPS")/." "$SRCTREE/"
+chmod -R u+w "$SRCTREE"
+cd "$SRCTREE"
+""" + build_lines + "\n" + smoke + "\n" + "cat > \"$out/JOBS.entrypoint\" <<'EOF'\n" + entrypoint + "\nEOF\n"
+
+    return struct(
+        name = "gitlab-" + component,
+        inputs = inputs,
+        env = {},
+        script = head + "\n".join(copies) + tail,
+        runtime_deps = [],
+        resources = struct(cpu = "2000m", memory = "4Gi"),
+        # Persistent Go build cache shared by the four components (same
+        # toolchain; platform is auto-appended by the runner).
+        caches = {"/go-build-cache": "gitlab-build-go1.26.4"},
+    )
