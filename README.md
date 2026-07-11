@@ -13,6 +13,9 @@ Cloud Native GitLab (Community Edition) components. Every build runs
 | `kas` | gitlab-org/cluster-integration/gitlab-agent | `bin/kas` |
 | `registry` | gitlab-org/container-registry | `bin/registry` |
 
+All four verified green on the cluster (`linux/amd64` + `linux/arm64`,
+2026-07-11).
+
 Planned next: workhorse, gitaly (bundled git from source), ruby-from-source,
 rails, sidekiq, webservice — see the design doc
 (`draganm/jobs` → `docs/superpowers/specs/2026-07-11-gitlab-cng-build-design.md`).
