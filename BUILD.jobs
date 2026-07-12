@@ -83,20 +83,20 @@ GOPLUGIN = fetcher(
 
 ALPINEAPK = fetcher(
     name   = "alpineapk",
-    url    = "https://github.com/jobs-build/fetcher-alpineapk/archive/0a6a773a1247b7cab16f4dbb86facc0173a823d8.tar.gz",
-    sha256 = "b457e2ce7b357b240e7c160a0e65a46630067c2580b6872876829d6f07c4d12c",
+    url    = "https://github.com/jobs-build/fetcher-alpineapk/archive/6551d3621b17c71e0542e6f72e403edf01a54aeb.tar.gz",
+    sha256 = "18cd84f90bfbd79c4ded8a1126d6949a88c72e882a2e2a340da3b1ef632ff2bc",
 )
 
 BUNDLERPLUGIN = fetcher(
     name   = "bundlerplugin",
-    url    = "https://github.com/jobs-build/plugin-bundler/archive/afcddc1c09e3b8dea6d34974a5d9b62ade0479e0.tar.gz",
-    sha256 = "195a0f100db6c93000079565d481c8523ed00c9fe50a7c57d699ca921e139b33",
+    url    = "https://github.com/jobs-build/plugin-bundler/archive/a9319955193c5d486c2dad18aad97732ff651683.tar.gz",
+    sha256 = "8d94e57a2e9036274e7c5f71450df926fbb4793c4d1c8e1701c328cc41c97b5e",
 )
 
 RUBYGEMS = fetcher(
     name   = "rubygems",
-    url    = "https://github.com/jobs-build/fetcher-rubygems/archive/eef9916db73b5c65c62c08d22ba6b1422e286419.tar.gz",
-    sha256 = "3653a363c15280278c2764e73e3ca04e0cac15a0e9997a4776836422932aa7f1",
+    url    = "https://github.com/jobs-build/fetcher-rubygems/archive/6d562856117ff75fd4d9eeb532e4b0ac8700d41f.tar.gz",
+    sha256 = "8cd8f3c23a2b09013cbe3ef74ca2ba2ec84e8ee99c1e579ee61694cebbca4d44",
 )
 
 # Ruby built from source at the exact version the GitLab tree declares
