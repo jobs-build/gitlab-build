@@ -875,7 +875,10 @@ mkdir -p /tmp/prometheus_multiproc
 export prometheus_multiproc_dir=/tmp/prometheus_multiproc
 export RAILS_ENV=production NODE_ENV=production USE_DB=false SKIP_STORAGE_VALIDATION=true
 export SECRET_KEY_BASE=jobsbuilddummysecretkeybase0000000000000000000000000000000000000
-export NODE_OPTIONS="--max-old-space-size=6144"
+# 3584 is the CNG assets image's own value: a smaller webpack heap GCs
+# harder instead of ballooning past the sandbox memory.max (the terser
+# workers scale with host cores and eat the rest of the budget).
+export NODE_OPTIONS="--max-old-space-size=3584"
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
@@ -1040,6 +1043,11 @@ cp -dr /usr/local/ruby/. "$out/jobs-ruby/"
         env = {},
         script = script,
         runtime_deps = runtime_deps,
-        resources = struct(cpu = "4000m", memory = "8Gi"),
+        # webservice's webpack pass peaked >8Gi under an ENFORCED memory.max
+        # (both arches OOM'd at exactly the old 8Gi cap once cluster cgroup
+        # limits became real). arm64 (gx10, 125Gi host) gets room; amd64
+        # (mac-mini, 15Gi host, 10Gi advertised) gets the most that fits —
+        # paired with the CNG-standard 3584 node heap below.
+        resources = struct(cpu = "4000m", memory = ({"linux/amd64": "9Gi", "linux/arm64": "16Gi"}[platform] if with_assets else "8Gi")),
         caches = {"/gem-cache": name + "-cache"},
     )
