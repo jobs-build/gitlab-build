@@ -12,9 +12,24 @@ Cloud Native GitLab (Community Edition) components. Every build runs
 | `pages` | gitlab-org/gitlab-pages | `bin/gitlab-pages` |
 | `kas` | gitlab-org/cluster-integration/gitlab-agent | `bin/kas` |
 | `registry` | gitlab-org/container-registry | `bin/registry` |
+| `workhorse` | gitlab-foss `workhorse/` (the master pin) | `bin/gitlab-workhorse` + zip/resize tools |
+| `gitaly` | gitlab-org/gitaly | `bin/gitaly` (embeds 2 meson-built bundled gits + aux binaries), praefect, wrapper, backup |
+| `rails` | gitlab-org/gitlab-foss | app tree: Ruby 3.3.11 built from source, 579 production gems (musl monsters precompiled), `bin/web` + `bin/sidekiq` |
+| `webservice` | gitlab-org/gitlab-foss | rails + yarn-offline webpack assets (`public/assets/webpack/manifest.json`) |
 
-All four verified green on the cluster (`linux/amd64` + `linux/arm64`,
-2026-07-11).
+**Verification status (2026-07-12):** shell/pages/kas/registry/workhorse/gitaly
+green on the cluster on both arches; `rails` and `webservice` build green
+hermetically (local runner, linux/amd64; rails also completed once on the
+arm64 cluster runner) — repeated cluster runs of the two monolith components
+currently trip JOBS engine/runner scalability bugs under the ~950-import
+storm (WriteRefs ack collapse, silent runner wedge, persisted FAILED /
+unplaceable verdicts), tracked in draganm/jobs issues.
+
+`jobs image --param component=pages` produces an OCI tarball whose
+`docker run` executes the built binary (phase-5 check).
+
+The `sidekiq` role needs no separate build: the rails/webservice artifacts
+carry both `bin/web` and `bin/sidekiq`; select at image/deploy time.
 
 Planned next: workhorse, gitaly (bundled git from source), ruby-from-source,
 rails, sidekiq, webservice — see the design doc
