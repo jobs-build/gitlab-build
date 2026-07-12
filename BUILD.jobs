@@ -841,6 +841,15 @@ node --version
 yarn --version
 """ + "\n".join(mirror_adds) + """
 cd "$APP"
+# Hermetic name resolution: the sandbox ships no /etc/hosts or resolv.conf,
+# so any resolver path blocks FOREVER on a UDP socket nothing will answer —
+# pg 1.6 resolves database.yml's host itself (Ruby-side getaddrinfo) before
+# connecting, which froze rails boot inside gitlab:js_routes at ~zero CPU.
+# A minimal hosts file answers localhost instantly and an empty resolv.conf
+# makes any other lookup fail fast instead of hanging.
+mkdir -p /etc
+printf "127.0.0.1 localhost\n::1 localhost\n" > /etc/hosts || true
+: > /etc/resolv.conf || true
 cat > .yarnrc <<'YARNRC'
 yarn-offline-mirror "/build/yarn-mirror"
 YARNRC
