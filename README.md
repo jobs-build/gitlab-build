@@ -4,7 +4,7 @@ Hermetic, offline [JOBS](https://github.com/draganm/jobs) builds of the
 Cloud Native GitLab (Community Edition) components. Every build runs
 `net=none`; every byte consumed is a pinned, content-addressed import.
 
-## Components (phase 1)
+## Components
 
 | `--param component=` | upstream | output |
 |---|---|---|
@@ -31,9 +31,8 @@ unplaceable verdicts), tracked in draganm/jobs issues.
 The `sidekiq` role needs no separate build: the rails/webservice artifacts
 carry both `bin/web` and `bin/sidekiq`; select at image/deploy time.
 
-Planned next: workhorse, gitaly (bundled git from source), ruby-from-source,
-rails, sidekiq, webservice — see the design doc
-(`draganm/jobs` → `docs/superpowers/specs/2026-07-11-gitlab-cng-build-design.md`).
+Design doc: `draganm/jobs` →
+`docs/superpowers/specs/2026-07-11-gitlab-cng-build-design.md`.
 
 ## Pinning
 
