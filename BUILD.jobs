@@ -830,6 +830,13 @@ cp -dr "$(jq -r .node <<<"$JOBS_DEPS")/." /build/node/
 cp -dr "$(jq -r .yarn <<<"$JOBS_DEPS")/." /build/yarn/
 chmod -R u+w /build/node /build/yarn
 export PATH="/build/node/bin:/build/yarn/bin:$PATH"
+# node-gyp (native optional deps, e.g. the tree-sitter family pulled in by
+# @swagger-api/apidom's yaml parsers) must never download node headers — the
+# sandbox is net=none, so the fetch fails with EAI_AGAIN and the modules stay
+# unbuilt (which hard-fails assets:compile on arches without shipped
+# prebuilds, e.g. arm64-musl). The node tarball ships include/node; point
+# gyp at it so native rebuilds are hermetic.
+export npm_config_nodedir=/build/node
 node --version
 yarn --version
 """ + "\n".join(mirror_adds) + """
@@ -870,7 +877,7 @@ export RAILS_ENV=production NODE_ENV=production USE_DB=false SKIP_STORAGE_VALIDA
 export SECRET_KEY_BASE=jobsbuilddummysecretkeybase0000000000000000000000000000000000000
 export NODE_OPTIONS="--max-old-space-size=6144"
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
-  { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; } >&2
+  { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
 }
 tail -5 /build/assets.log
