@@ -1,4 +1,4 @@
-# BUILD.jobs — hermetic JOBS builds of the Cloud Native GitLab (CE) components.
+# BUILD.jobs — hermetic JOBS builds of the Cloud Native GitLab (CE) components. (r2)
 #
 # One component per invocation, selected by --param component=:
 #
