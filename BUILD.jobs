@@ -891,6 +891,12 @@ export SECRET_KEY_BASE=jobsbuilddummysecretkeybase000000000000000000000000000000
 # observed on 20-core gx10 even with a 3584 heap) — so: 6144 heap, and the
 # build's declared memory sized per arch below.
 export NODE_OPTIONS="--max-old-space-size=6144"
+# gitlab's webpack config natively hangs its babel-loader, vue-loader,
+# incremental-compile, and vendor-DLL caches off WEBPACK_CACHE_PATH — point
+# it into the persistent build cache so warm webpack passes reuse them
+# (advisory: atime-pruned, success-only upload, like the gem snapshots).
+mkdir -p /gem-cache/webpack
+export WEBPACK_CACHE_PATH=/gem-cache/webpack
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
@@ -972,9 +978,16 @@ LOCKHASH=$(sha256sum Gemfile.lock | cut -c1-16)
 # cache (which holds exactly the locked versions, musl variants included),
 # writing a fresh platform-correct lock.
 rm -f Gemfile.lock
+# The cache tar must carry BOTH vendor/bundle AND the freshly-resolved
+# Gemfile.lock: the upstream lock is deleted above (musl re-resolution), so
+# a restore without the generated lock leaves bundler re-resolving blind on
+# the next `bundle exec` — Bundler::GemNotFound on the first warm attempt.
+# A legacy tar without the lock falls through to a clean cold install.
 if [ -f "/gem-cache/bundle-$LOCKHASH.tar" ]; then
   tar xf "/gem-cache/bundle-$LOCKHASH.tar"
-else
+fi
+if [ ! -f Gemfile.lock ] || [ ! -d vendor/bundle ]; then
+  rm -rf vendor/bundle
   bundle install --local || {
     echo "===== bundle install FAILED; native build logs with real errors:" >&2
     for f in vendor/bundle/ruby/*/extensions/*/*/*/gem_make.out vendor/bundle/ruby/*/gems/*/ext/*/mkmf.log; do
@@ -985,7 +998,8 @@ else
     done
     exit 1
   }
-  tar cf "/gem-cache/bundle-$LOCKHASH.tar" vendor/bundle
+  rm -f "/gem-cache/bundle-$LOCKHASH.tar"
+  tar cf "/gem-cache/bundle-$LOCKHASH.tar" vendor/bundle Gemfile.lock
 fi
 
 # 6. Native smoke: load every heavyweight extension.
