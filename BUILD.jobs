@@ -113,7 +113,7 @@ NODE = {
     "arm64": ("https://unofficial-builds.nodejs.org/download/release/v22.23.1/node-v22.23.1-linux-arm64-musl.tar.gz", "e936285203461f05614bba13fb265ab64e5c63048b35514cec66ae9a1666a07b"),
 }
 NODEARCH = {"linux/amd64": "x64", "linux/arm64": "arm64"}
-YARN = ("https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz",
+YARN = ("https://github.com/yarnpkg/yarn/releases/download/v1.22.22/yarn-v1.22.22.tar.gz?jobs-rekey=1",
         "88268464199d1611fcf73ce9c0a6c4d44c7d5363682720d8506f6508addf36a0")
 
 NODEPLUGIN = fetcher(
@@ -781,7 +781,7 @@ def rails_build(with_assets):
         "src": gitlab_import(),
         "toolchain": toolchain_import(),
         "rubysrc": imp(fetcher = "tarball+https", params = {
-            "url": "https://cache.ruby-lang.org/pub/ruby/3.3/ruby-" + RUBY_VERSION + ".tar.gz",
+            "url": "https://ftp.ruby-lang.org/pub/ruby/3.3/ruby-" + RUBY_VERSION + ".tar.gz",
             "sha256": RUBY_SHA256,
             "strip": 1,
         }),
