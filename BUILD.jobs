@@ -884,10 +884,13 @@ mkdir -p /tmp/prometheus_multiproc
 export prometheus_multiproc_dir=/tmp/prometheus_multiproc
 export RAILS_ENV=production NODE_ENV=production USE_DB=false SKIP_STORAGE_VALIDATION=true
 export SECRET_KEY_BASE=jobsbuilddummysecretkeybase0000000000000000000000000000000000000
-# 3584 is the CNG assets image's own value: a smaller webpack heap GCs
-# harder instead of ballooning past the sandbox memory.max (the terser
-# workers scale with host cores and eat the rest of the budget).
-export NODE_OPTIONS="--max-old-space-size=3584"
+# Two DISTINCT memory walls, measured: webpack's main node process needs
+# >3584MB of JS HEAP (V8 aborts SIGABRT "Reached heap limit" below that,
+# regardless of the cgroup budget), and the whole cgroup must also fit the
+# heap PLUS the terser workers (scale with host cores; ~12.8Gi total peak
+# observed on 20-core gx10 even with a 3584 heap) — so: 6144 heap, and the
+# build's declared memory sized per arch below.
+export NODE_OPTIONS="--max-old-space-size=6144"
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
@@ -1057,6 +1060,6 @@ cp -dr /usr/local/ruby/. "$out/jobs-ruby/"
         # limits became real). arm64 (gx10, 125Gi host) gets room; amd64
         # (mac-mini, 15Gi host, 10Gi advertised) gets the most that fits —
         # paired with the CNG-standard 3584 node heap below.
-        resources = struct(cpu = "4000m", memory = ({"linux/amd64": "9Gi", "linux/arm64": "16Gi"}[platform] if with_assets else "8Gi")),
+        resources = struct(cpu = "4000m", memory = ({"linux/amd64": "9Gi", "linux/arm64": "20Gi"}[platform] if with_assets else "8Gi")),
         caches = {"/gem-cache": name + "-cache"},
     )
