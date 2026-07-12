@@ -1,6 +1,8 @@
 # BUILD.jobs — hermetic JOBS builds of the Cloud Native GitLab (CE) components.
 #
 # One component per invocation, selected by --param component=:
+# (cache note: the gem snapshot tar carries vendor/bundle + the generated
+# Gemfile.lock; webpack reuses /gem-cache/webpack across builds)
 #
 #   jobs remote-build --source-dir . --param component=shell      # gitlab-shell
 #   jobs remote-build --source-dir . --param component=pages      # gitlab-pages
