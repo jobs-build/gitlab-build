@@ -1060,6 +1060,6 @@ cp -dr /usr/local/ruby/. "$out/jobs-ruby/"
         # limits became real). arm64 (gx10, 125Gi host) gets room; amd64
         # (mac-mini, 15Gi host, 10Gi advertised) gets the most that fits —
         # paired with the CNG-standard 3584 node heap below.
-        resources = struct(cpu = "4000m", memory = ({"linux/amd64": "9Gi", "linux/arm64": "20Gi"}[platform] if with_assets else "8Gi")),
+        resources = struct(cpu = "4000m", memory = ({"linux/amd64": "9Gi", "linux/arm64": "24Gi"}[platform] if with_assets else "8Gi")),
         caches = {"/gem-cache": name + "-cache"},
     )
