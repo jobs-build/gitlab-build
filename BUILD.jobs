@@ -916,11 +916,17 @@ module.exports.cache = {
   compression: false,
 };
 JOBSCACHE
+grep -c "jobs-build" config/webpack.config.js >&2 || echo "WEBPACK CACHE INJECTION MISSING" >&2
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
 }
 tail -5 /build/assets.log
+# Timing + cache forensics (stderr -> job log/collector, not assets.log):
+{ echo "===== assets task timings:"; grep "finished in" /build/assets.log
+  echo "===== webpack log tail:"; tail -15 tmp/webpack_output*.log 2>/dev/null || echo none
+  echo "===== fs-cache state:"; du -s /gem-cache/webpack/fs-cache 2>/dev/null || echo "NO fs-cache dir"
+  du -s /gem-cache/webpack 2>/dev/null; } >&2
 test -f public/assets/webpack/manifest.json
 unset NODE_OPTIONS SECRET_KEY_BASE USE_DB SKIP_STORAGE_VALIDATION NODE_ENV
 """
