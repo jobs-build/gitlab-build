@@ -900,23 +900,13 @@ export NODE_OPTIONS="--max-old-space-size=6144"
 # (advisory: atime-pruned, success-only upload, like the gem snapshots).
 mkdir -p /gem-cache/webpack
 export WEBPACK_CACHE_PATH=/gem-cache/webpack
-# webpack 5 filesystem cache (the module graph AND terser results — the
-# actual ~15min of a webservice compile): gitlab never enables it for
-# production compiles, so the loader caches above only save ~2min. Appended
-# override: module.exports is a plain object and CACHE_PATH/path are in
-# scope at the file's tail. Deterministic amber mtimes keep the cache's
-# snapshots valid across builds.
-cat >> config/webpack.config.js <<'JOBSCACHE'
-
-// [jobs-build] persistent filesystem cache under WEBPACK_CACHE_PATH
-module.exports.cache = {
-  type: 'filesystem',
-  cacheDirectory: path.join(CACHE_PATH, 'fs-cache'),
-  buildDependencies: { config: [__filename] },
-  compression: false,
-};
-JOBSCACHE
-grep -c "jobs-build" config/webpack.config.js >&2 || echo "WEBPACK CACHE INJECTION MISSING" >&2
+# NOTE on webpack caching: gitlab v19 pins webpack 4.47, which has NO
+# persistable cache (the webpack-5 filesystem cache is silently ignored —
+# verified: injected config present, no cache dir ever written). What CAN
+# be cached is already wired via WEBPACK_CACHE_PATH above: the vendor DLL,
+# babel-loader, and vue-loader caches (~2min of a ~17min webpack pass).
+# The module-graph + terser core re-runs by webpack-4 design; the real
+# fix is upstream's vite migration.
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
