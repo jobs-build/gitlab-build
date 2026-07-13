@@ -899,6 +899,22 @@ export NODE_OPTIONS="--max-old-space-size=6144"
 # (advisory: atime-pruned, success-only upload, like the gem snapshots).
 mkdir -p /gem-cache/webpack
 export WEBPACK_CACHE_PATH=/gem-cache/webpack
+# webpack 5 filesystem cache (the module graph AND terser results — the
+# actual ~15min of a webservice compile): gitlab never enables it for
+# production compiles, so the loader caches above only save ~2min. Appended
+# override: module.exports is a plain object and CACHE_PATH/path are in
+# scope at the file's tail. Deterministic amber mtimes keep the cache's
+# snapshots valid across builds.
+cat >> config/webpack.config.js <<'JOBSCACHE'
+
+// [jobs-build] persistent filesystem cache under WEBPACK_CACHE_PATH
+module.exports.cache = {
+  type: 'filesystem',
+  cacheDirectory: path.join(CACHE_PATH, 'fs-cache'),
+  buildDependencies: { config: [__filename] },
+  compression: false,
+};
+JOBSCACHE
 bundle exec rake gitlab:assets:compile > /build/assets.log 2>&1 || {
   { echo "===== gitlab:assets:compile FAILED; rake aborted section:"; grep -B2 -A40 "rake aborted" /build/assets.log | head -80; echo "===== assets.log tail:"; tail -60 /build/assets.log; } >&2
   exit 1
