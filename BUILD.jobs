@@ -2,7 +2,8 @@
 #
 # One component per invocation, selected by --param component=:
 # (cache note: the gem snapshot tar carries vendor/bundle + the generated
-# Gemfile.lock; webpack reuses /gem-cache/webpack across builds)
+# Gemfile.lock; webpack reuses /gem-cache/webpack across builds, incl. the
+# webpack5 filesystem cache — module graph + terser results)
 #
 #   jobs remote-build --source-dir . --param component=shell      # gitlab-shell
 #   jobs remote-build --source-dir . --param component=pages      # gitlab-pages
